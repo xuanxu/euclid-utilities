@@ -99,3 +99,51 @@ RA 68.348410  Dec -65.746812  VIS  57"
 - **Automatic framing can be too wide.** It uses the catalogue's Kron radius,
   which can be inflated for faint or blended sources. Set `--size` if needed.
 - Tested on macOS. On Linux the image opens with `xdg-open`.
+
+# euclid_discs
+
+Search DR1 for edge-on protoplanetary discs: young stars hidden behind a dark dust
+lane, with two bright scattered-light lobes on either side (a "butterfly").
+
+```sh
+./euclid_discs.py                                  # the dustiest sightlines in the catalogue
+./euclid_discs.py --ra 68.348 --dec -65.747 -r 0.2 # a region of your choice
+```
+
+It writes `discs.csv`, every scored source ranked, and `discs.png`, a contact sheet of
+the best candidates with orange ticks along each candidate's dark lane. Look at one more
+closely with `./euclid_view.py <object_id>`.
+
+| Option | Description |
+|---|---|
+| `--ra`, `--dec`, `-r`, `--radius` | Search a cone (degrees). Default: no region; select sightlines by dust instead. |
+| `--min-ebv E` | Without a region, keep sources with Planck E(B-V) above this. Default: 0.2. |
+| `-c`, `--catalogue NAME` | DR1 MER catalogue to search. Default: `wide_survey`. |
+| `-n`, `--limit N` | Sources to download and score. Default: 300. |
+| `-t`, `--top N` | Candidates on the contact sheet. Default: 25. |
+| `--max-point-like P` | Maximum `point_like_prob`. Default: 0.1. |
+| `--min-area`, `--max-area` | Isophotal area in VIS pixels (0.01 arcsec²). Default: 200–20000. |
+| `-o`, `--output PREFIX` | Prefix for the `.csv` and `.png`. Default: `discs`. |
+| `--no-open` | Save the contact sheet without opening it. |
+
+## How the search works
+
+1. **Pre-select.** Resolved (`point_like_prob` low), non-spurious, VIS-detected sources
+   1.5–15″ across, from a cone or from the dustiest sightlines: discs sit in molecular
+   clouds, which show up as high E(B-V).
+2. **Score.** For each source, a VIS cutout is downloaded and the source is collapsed
+   onto the axis across every candidate lane orientation. A butterfly shows a bright peak
+   on each side with a dip between them. The score is `dip × √balance`, where `dip` is
+   how dark the lane is relative to the fainter lobe (0–1) and `balance` is the
+   brightness ratio of the lobes (0–1). Orientations are rejected when the lane is
+   off-centre, the brightest pixel lies in the lane (a galaxy bulge), or a lobe is
+   point-like or shorter than the lobe separation (a pair of neighbouring sources).
+3. **Rank.** Sources within 2″ of a better one are dropped, because a disc's two lobes
+   are often catalogued as separate objects.
+
+A well-defined butterfly scores above about 0.5. Normal galaxies and stars score near
+0, but close galaxy pairs and clumpy galaxies can still score 0.2–0.4, so check the
+contact sheet by eye.
+
+Cutouts are downloaded one at a time: the archive's cutout service returns the wrong
+images when it gets concurrent requests. A search of 300 sources takes about 3 minutes.
